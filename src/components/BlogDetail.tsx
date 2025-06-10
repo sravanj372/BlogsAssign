@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// src/components/BlogDetail.tsx
+import React from 'react';
 import {
   Container,
   Typography,
@@ -15,53 +16,28 @@ import { ArrowBack as ArrowBackIcon, Person as PersonIcon } from '@mui/icons-mat
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../app/store';
 import { clearSelectedBlog } from '../features/blogs/blogSlice';
-
-interface BlogPost {
-  userId: number;
-  id: number;
-  title: string;
-  body: string;
-}
+import { useGetBlogByIdQuery } from '../features/blogs/blogApi';
 
 const BlogDetail: React.FC = () => {
   const dispatch = useDispatch();
   const blogId = useSelector((state: RootState) => state.blog.selectedBlogId);
-  const [blog, setBlog] = useState<BlogPost | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
 
-  useEffect(() => {
-    if (blogId === null) return;
-    const fetchBlogDetail = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`https://jsonplaceholder.typicode.com/posts/${blogId}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch blog details');
-        }
-        const data: BlogPost = await response.json();
-        setBlog(data);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBlogDetail();
-  }, [blogId]);
+  const {
+    data: blog,
+    isLoading,
+    isError,
+    error,
+  } = useGetBlogByIdQuery(blogId!, { skip: blogId === null });
 
   const isDark = theme.palette.mode === 'dark';
-
   const neutralBackground = theme.palette.background.paper;
   const sectionBackground = isDark ? '#1e1e1e' : '#fafafa';
   const borderColor = theme.palette.divider;
   const headingColor = theme.palette.text.primary;
   const subHeadingColor = theme.palette.text.secondary;
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -71,24 +47,14 @@ const BlogDetail: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (isError || !blog) {
+    const errMsg = (error as { message?: string })?.message ?? 'Failed to load blog details';
     return (
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Button startIcon={<ArrowBackIcon />} onClick={() => dispatch(clearSelectedBlog())} sx={{ mb: 3 }}>
           Back to Blog List
         </Button>
-        <Alert severity="error">{error}</Alert>
-      </Container>
-    );
-  }
-
-  if (!blog) {
-    return (
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => dispatch(clearSelectedBlog())} sx={{ mb: 3 }}>
-          Back to Blog List
-        </Button>
-        <Alert severity="info">Blog not found</Alert>
+        <Alert severity="error">{errMsg}</Alert>
       </Container>
     );
   }
@@ -161,77 +127,6 @@ const BlogDetail: React.FC = () => {
           <Typography variant="body1" sx={{ color: headingColor, lineHeight: 1.8, textAlign: 'justify' }}>
             {blog.body}
           </Typography>
-        </Box>
-
-        <Box
-          sx={{
-            backgroundColor: sectionBackground,
-            p: 3,
-            borderTop: `1px solid ${borderColor}`,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <Box>
-            <Typography variant="body2" color="text.secondary">
-              Article Details
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Written by User {blog.userId} • Article #{blog.id}
-            </Typography>
-          </Box>
-          <Button
-            variant="outlined"
-            onClick={() => dispatch(clearSelectedBlog())}
-            sx={{
-              borderColor: theme.palette.primary.main,
-              color: theme.palette.primary.main,
-              '&:hover': {
-                backgroundColor: isDark ? '#333' : '#f0f7ff',
-              },
-            }}
-          >
-            Back to List
-          </Button>
-        </Box>
-      </Paper>
-
-      <Paper
-        elevation={0}
-        sx={{
-          border: `1px solid ${borderColor}`,
-          borderRadius: 2,
-          mt: 3,
-          p: 3,
-          backgroundColor: neutralBackground,
-        }}
-      >
-        <Typography variant="h6" sx={{ mb: 2, color: headingColor }}>
-          Blog Information
-        </Typography>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 2,
-          }}
-        >
-          {[
-            { label: 'User ID', value: blog.userId, color: theme.palette.primary.main },
-            { label: 'Blog ID', value: blog.id, color: theme.palette.secondary.main },
-            { label: 'Title Length', value: `${blog.title.length} characters`, color: '#388e3c' },
-            { label: 'Content Length', value: `${blog.body.length} characters`, color: '#f57c00' },
-          ].map((item, idx) => (
-            <Box key={idx}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                {item.label}
-              </Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold', color: item.color }}>
-                {item.value}
-              </Typography>
-            </Box>
-          ))}
         </Box>
       </Paper>
     </Container>
